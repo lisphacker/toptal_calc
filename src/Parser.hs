@@ -218,39 +218,27 @@ infix2postfix ts =
         windup outQ [] = Right outQ
         windup outQ (op@(TokenOp _):reststk) = windup (op:outQ) reststk
         windup outQ _ = Left $ ParseError "Mismatched parantheses"
-          
 
-        {-
-        parse' opStk exprStk ((TokenFn fn):ts) = parse' ((OFFn fn):opStk) exprStk ts
-        parse' opStk exprStk ((TokenOp op):ts) = 
-
-        windup opStk exprStk = trace ("opStk = " ++ (show opStk) ++ ", exprStk = " ++ (show exprStk)) $ Left $ ParseError "X"
-        makeOpExpr opStk exprStk = if length opStk == 0
-                                   then
-                                     ([], [], Left $ ParseError "Expected an operator")
-                                   else
-                                     case length exprStk of
-                                       0 -> ([], [], Left $ ParseError "Operator require two parameters, found none")
-                                       1 -> ([], [], Left $ ParseError "Operator require two parameters, found only one")
-                                       _ -> let op = opfnOp $ head opStk
-                                                expr1 = head exprStk
-                                                expr2 = (head . tail) exprStk
-                                                opStk' = tail opStk
-                                                exprStk' = (tail . tail) exprStk
-                                            in (opStk', exprStk', Right $ ExprOp op expr1 expr2)
-
-
--}
-
-parse s = let ets = postProcessTokenStream <$> tokenize s
-          in case ets of
-               Left e -> Left e
-               Right ts -> infix2postfix ts
-{-
 parse :: String -> Either ParseError Expr
 parse s = let ets = postProcessTokenStream <$> tokenize s
           in case ets of
                Left e -> Left e
-               Right ts -> fmap fst $ parseTokenStream ts
-
--}
+               Right ts ->
+                 case infix2postfix ts of
+                   Left e' -> Left e'
+                   Right ts' -> post2tree [] ts'
+  where post2tree (stkTop:[]) [] = Right stkTop
+        post2tree stk ((TokenValue val):ts) = post2tree ((ExprValue val):stk) ts
+        post2tree stk ((TokenOp op):ts) = if length stk >= 2
+                                          then
+                                            let e1 = head stk
+                                                e2 = (head . tail) stk
+                                            in post2tree ((ExprOp op e2 e1):((tail . tail) stk)) ts
+                                          else
+                                            Left $ ParseError "Unable to parse expression"
+        post2tree stk ((TokenFn fn):ts) = if length stk >= 1
+                                          then
+                                            let e = head stk
+                                            in post2tree ((ExprFn fn e):(tail stk)) ts
+                                          else
+                                            Left $ ParseError "Unable to parse expression"
