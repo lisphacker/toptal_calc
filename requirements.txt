@@ -1,0 +1,39 @@
+Hi Gautham,
+
+It was nice talking with you and I would like to invite you to schedule a time with a Toptal Sr Engineer, who will verify that your project works correctly, and conduct a short technical interview.
+
+Please schedule an interview time that best works for you. Bear in mind that you will need to show a finished project during this interview.
+
+The requirements for the test project are:
+
+Write a simple scientific calculator app with the following features:
+
+the calculator supports addition, subtraction, multiplication, division, log on floating point numbers
+the calculator can solve simple linear equations with a single variable (namely, x), for simplicity, only addition, subtraction and multiplication operations are allowed
+the calculator supports parentheses in both modes
+the calculator should have a language parser
+do not use any library that can accomplish any of the listed requirements
+the calculator should handle all error cases properly (by carefully indicating the errors to the user)
+Examples:
+
+input: (3+(4-1))*5
+output: 30
+
+input: 2 * x + 0.5 = 1
+output: x = 0.25
+
+input: 2x + 1 = 2(1-x)
+output: x = 0.25
+
+NOTE: Please keep in mind that this is the project that will be used to evaluate your skills. The project will be evaluated as if you were delivering it to a customer. We expect you to make sure that the app is fully functional and doesn’t have any obvious missing pieces. The deadline for the project is 2 weeks from today.
+
+Please use this private repository to version-control your code:
+http://git.toptal.com/daniel.campos/project-gautham-ganapathy
+Username: gautham.ganapathy
+
+The project deadline is up to two weeks, but we do urge you to schedule a time now. Once you schedule a call, we will email you the meeting details and you’ll get a technical interviewer assigned. This technical interviewer will be able to answer any questions you might have.
+
+Thanks!
+Daniel
+
+Daniel Campos || Toptal || +5531991349178 (office) || danielfelicissimo (skype)
