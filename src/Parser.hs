@@ -2,12 +2,13 @@ module Parser where
 
 import Data.Char
 import Data.Maybe
-import Text.Read
+import Text.Read hiding (prec)
 import Control.Applicative
 import Control.Monad
 import Debug.Trace
 
 data Op = Add | Sub | Mul | Div | Eq | OpTerm
+        deriving (Eq)
 
 instance Show Op where
   show Add = "+"
@@ -17,6 +18,7 @@ instance Show Op where
   show Eq  = "="
 
 data Assoc = L | R
+           deriving (Eq)
 
 prec :: Op -> Int
 prec Add    = 2
@@ -69,6 +71,7 @@ tokenize s@(c:cs)
   | isAlpha c         = ((:) (TokenValue (Variable c))) <$> tokenize cs
   | c == '.'          = parseNumber s
   | isDigit c         = parseNumber s
+  | otherwise         = Left $ ParseError $ "Unexpected character at " ++ (take 10 s)
     where parseNumber s = let s' = readNumber s
                               in case readMaybe s' of
                                    Nothing  -> Left $ ParseError $ "Unable to parsee number at " ++ (take 10 s)
@@ -171,15 +174,51 @@ parseTokenStream ts = parse' [OFTerm] [ExprTerm] ts
                                             in (opStk', exprStk', Right $ ExprOp op expr1 expr2)
 -}
 
-parseTokenStream :: [Token] -> Either ParseError [Token]
-parseTokenStream ts = in2post [] [] ts
-  where in2post outQ stk [] = outQ
+infix2postfix :: [Token] -> Either ParseError [Token]
+infix2postfix ts =
+  case in2post [] [] ts of
+    Left e -> Left e
+    Right tokens -> Right $ reverse tokens
+  
+  where in2post outQ stk [] = windup outQ stk
         in2post outQ stk (v@(TokenValue _):ts) = in2post (v:outQ) stk ts
         in2post outQ stk (fn@(TokenFn _):ts) = in2post outQ (fn:stk) ts
-        in2post outQ stk ((TokenOp op):ts) = let (op', stk', outQ') = processOp op stk outQ
-                                             in in2post outQ' ((TokenOp op):stk) ts
+        in2post outQ stk ((TokenOp op):ts) = let (outQ', stk') = processOp outQ stk op
+                                             in in2post outQ' ((TokenOp op):stk') ts
+        in2post outQ stk (TokenBrOpen:ts) = in2post outQ (TokenBrOpen:stk) ts
+        in2post outQ stk (TokenBrClose:ts) =
+          let eQS = processBrClose outQ stk
+          in case eQS of
+            Left e -> Left e
+            Right (outQ', stk') -> in2post outQ' stk' ts
+        
+        processOp outQ stk op =
+          if null stk
+          then
+            (outQ, stk)
+          else
+            case head stk of
+              TokenOp op' -> if (assoc op == L && prec op <= prec op') || (assoc op == R && prec op < prec op')
+                             then
+                               processOp ((TokenOp op'):outQ) (tail stk) op
+                             else
+                               (outQ, stk)
+              otherwise   -> (outQ, stk)
+                               
+        processBrClose outQ []                       = Left $ ParseError "Mismatched parantheses"
+        processBrClose outQ (op@(TokenOp _):reststk) = processBrClose (op:outQ) reststk
+        processBrClose outQ stk                      = processBrClose' outQ stk
+        
+        processBrClose' outQ (TokenBrOpen:reststk) = processBrClose'' outQ reststk
+        processBrClose' _    _                     = Left $ ParseError "Mismatched parantheses"
+        
+        processBrClose'' outQ (fn@(TokenFn _):reststk) = Right $ ((fn:outQ) , reststk)
+        processBrClose'' outQ stk                      = Right $ (outQ, stk)
 
-        processOp op stk outQ = case 
+        windup outQ [] = Right outQ
+        windup outQ (op@(TokenOp _):reststk) = windup (op:outQ) reststk
+        windup outQ _ = Left $ ParseError "Mismatched parantheses"
+          
 
         {-
         parse' opStk exprStk ((TokenFn fn):ts) = parse' ((OFFn fn):opStk) exprStk ts
@@ -202,6 +241,11 @@ parseTokenStream ts = in2post [] [] ts
 
 
 -}
+
+parse s = let ets = postProcessTokenStream <$> tokenize s
+          in case ets of
+               Left e -> Left e
+               Right ts -> infix2postfix ts
 {-
 parse :: String -> Either ParseError Expr
 parse s = let ets = postProcessTokenStream <$> tokenize s
