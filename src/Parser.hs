@@ -14,10 +14,12 @@ module Parser
        , Fn(..)
        , Value(..)
        , Expr(..)
+       , ParseError(..)
        , parse
        ) where
 
 import Data.Char
+import Data.List
 import Text.Read hiding (prec)
 import Debug.Trace
 
@@ -89,14 +91,14 @@ tokenize s@(c:cs)
   | c == '('          = ((:) (TokenBrOpen)) <$> tokenize cs
   | c == ')'          = ((:) (TokenBrClose)) <$> tokenize cs
   | take 3 s == "log" = ((:) (TokenFn Log)) <$> tokenize (drop 3 s)
-  | take 3 s == "ln"  = ((:) (TokenFn Ln)) <$> tokenize (drop 3 s)
+  | take 2 s == "ln"  = ((:) (TokenFn Ln)) <$> tokenize (drop 3 s)
   | isAlpha c         = ((:) (TokenValue (Variable c))) <$> tokenize cs
   | c == '.'          = parseNumber s
   | isDigit c         = parseNumber s
   | otherwise         = Left $ ParseError $ "Unexpected character at " ++ (take 10 s)
     where parseNumber s = let s' = readNumber s
                               in case readMaybe s' of
-                                   Nothing  -> Left $ ParseError $ "Unable to parsee number at " ++ (take 10 s)
+                                   Nothing  -> Left $ ParseError $ "Unable to parse number at " ++ (take 10 s)
                                    Just val -> ((:) (TokenValue (Numeric val))) <$> tokenize (drop (length s') s)
           readNumber s = let (n1, r1) = testS readInt s
                              (dot, r2) = testS (readChar ".") r1
@@ -110,6 +112,50 @@ tokenize s@(c:cs)
           readInt s = span isDigit s
           readChar cs s = if elem (head s) cs then (head s:[], tail s) else ("", s)
 
+-- | Validate token stream
+validateTokenStream :: [Token] -> Either ParseError [Token]
+validateTokenStream ts = let nvar = countVariables ts
+                             neq  = countEq ts
+                             nfn  = countFn ts
+                         in if neq == 0
+                            then
+                              if nvar == 0
+                              then
+                                Right ts
+                              else
+                                Left $ ParseError "Cannot resolve expression to a constant value due to unresolvable variables"
+                            else
+                              if neq == 1
+                              then
+                                if nvar == 1
+                                then
+                                  if nfn == 0
+                                  then
+                                    Right ts
+                                  else
+                                    Left $ ParseError "Functions are not permitted in a linear equation"
+                                else
+                                  Left $ ParseError "Must have exactly one variable in a single linear equation"
+                              else
+                                Left $ ParseError "Too many equalities in equation"
+  where countVariables = length . group . sort . countVar
+        
+        countVar []                             = ""
+        countVar ((TokenValue (Variable v)):ts) = v:(countVar ts)
+        countVar (t:ts)                         = countVar ts
+        
+        countEq = countEq' 0
+        
+        countEq' c []                = c
+        countEq' c ((TokenOp Eq):ts) = countEq' (c + 1) ts
+        countEq' c (t:ts)            = countEq' c ts
+  
+        countFn = countFn' 0
+        
+        countFn' c []               = c
+        countFn' c ((TokenFn _):ts) = countFn' (c + 1) ts
+        countFn' c (t:ts)           = countFn' c ts
+  
 -- | Postprocesses a token stream to manage unary negatives and implcit multiplies.
 postProcessTokenStream :: [Token] -> [Token]
 postProcessTokenStream [] = []
@@ -142,6 +188,7 @@ infix2postfix ts =
   where in2post outQ stk [] = windup outQ stk
         in2post outQ stk (v@(TokenValue _):ts) = in2post (v:outQ) stk ts
         in2post outQ stk (fn@(TokenFn _):ts) = in2post outQ (fn:stk) ts
+        in2post outQ stk (TokenNeg:ts) = in2post outQ (TokenNeg:stk) ts
         in2post outQ stk ((TokenOp op):ts) = let (outQ', stk') = processOp outQ stk op
                                              in in2post outQ' ((TokenOp op):stk') ts
         in2post outQ stk (TokenBrOpen:ts) = in2post outQ (TokenBrOpen:stk) ts
@@ -177,28 +224,45 @@ infix2postfix ts =
         windup outQ [] = Right outQ
         windup outQ (op@(TokenOp _):reststk) = windup (op:outQ) reststk
         windup outQ (fn@(TokenFn _):reststk) = windup (fn:outQ) reststk
+        windup outQ (TokenNeg:reststk)       = windup (TokenNeg:outQ) reststk
         windup outQ _ = Left $ ParseError "Mismatched parantheses"
+
+zeroExpr = ExprValue (Numeric 0.0)
 
 -- | Parses a string into an expression tree if possible or returns an error.                                            
 parse :: String -> Either ParseError Expr
 parse s = do
   ifts <- postProcessTokenStream <$> tokenize s
-  pfts <- infix2postfix ifts
+  vifts <- validateTokenStream ifts
+  pfts <- infix2postfix vifts
   expr <- post2tree [] pfts
   return expr
   
-  where post2tree (stkTop:[]) [] = Right stkTop
-        post2tree stk ((TokenValue val):ts) = post2tree ((ExprValue val):stk) ts
-        post2tree stk ((TokenOp op):ts) = if length stk >= 2
-                                          then
-                                            let e1 = head stk
-                                                e2 = (head . tail) stk
-                                            in post2tree ((ExprOp op e2 e1):((tail . tail) stk)) ts
-                                          else
-                                            Left $ ParseError "Unable to parse expression"
-        post2tree stk ((TokenFn fn):ts) = if length stk >= 1
-                                          then
-                                            let e = head stk
-                                            in post2tree ((ExprFn fn e):(tail stk)) ts
-                                          else
-                                            Left $ ParseError "Unable to parse expression"
+  where post2tree []          []                    = Left $ ParseError "Empty input"
+        post2tree (stkTop:[]) []                    = Right stkTop
+        post2tree stk         ((TokenValue val):ts) = post2tree ((ExprValue val):stk) ts
+        post2tree stk         ((TokenOp op):ts)     = if length stk >= 2
+                                                      then
+                                                        let e1 = head stk
+                                                            e2 = (head . tail) stk
+                                                        in post2tree ((ExprOp op e2 e1):((tail . tail) stk)) ts
+                                                      else
+                                                        Left $ ParseError "Unable to parse expression"
+        post2tree stk         ((TokenFn fn):ts)     = if length stk >= 1
+                                                      then
+                                                        let e = head stk
+                                                        in post2tree ((ExprFn fn e):(tail stk)) ts
+                                                      else
+                                                        Left $ ParseError "Unable to parse expression"
+        post2tree stk        (TokenNeg:ts)          = if length stk >= 1
+                                                      then
+                                                        let e = head stk
+                                                        in post2tree ((ExprOp Sub zeroExpr  e):(tail stk)) ts
+                                                      else
+                                                        Left $ ParseError "Unable to parse expression"
+
+------------------------------------------------------------
+
+ex1 = "(3+(4-1))*5"
+ex2 = "2 * x + 0.5 = 1"
+ex3 = "2x + 1 = 2(1-x)"
