@@ -21,7 +21,7 @@ executable calc
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib
+  exposed-modules:     Parser
   build-depends:       base >= 4.7 && < 5
   default-language:    Haskell2010
 

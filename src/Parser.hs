@@ -1,12 +1,27 @@
-module Parser where
+{-|
+Module      : Parser
+Description : Mathematical expression parser
+Copyright   : (c) Gautham Ganapathy, 2017
+License     : BSD
+Maintainer  : gautham@lisphacker.org
+Stability   : experimental
+Portability : POSIX
+
+Parses mathematics expressions into an expression tree using the Shunting Yard algorithm.
+-}
+module Parser
+       ( Op(..)
+       , Fn(..)
+       , Value(..)
+       , Expr(..)
+       , parse
+       ) where
 
 import Data.Char
-import Data.Maybe
 import Text.Read hiding (prec)
-import Control.Applicative
-import Control.Monad
 import Debug.Trace
 
+-- | Binary operations.
 data Op = Add | Sub | Mul | Div | Eq | OpTerm
         deriving (Eq)
 
@@ -17,9 +32,11 @@ instance Show Op where
   show Div = "/"
   show Eq  = "="
 
+-- | Operator associativity/
 data Assoc = L | R
            deriving (Eq)
 
+-- | Returns operator precedence priority.
 prec :: Op -> Int
 prec Add    = 2
 prec Sub    = 2
@@ -28,6 +45,7 @@ prec Div    = 3
 prec Eq     = 0
 prec OpTerm = -100
 
+-- | Returns operator associativity.
 assoc :: Op -> Assoc
 assoc Add = L
 assoc Sub = L
@@ -35,26 +53,30 @@ assoc Mul = L
 assoc Div = L
 assoc Eq  = L
 
+-- | Unary functions.
 data Fn = Log | Ln
 
 instance Show Fn where
   show Log = "log"
   show Ln  = "ln"
 
-data Value = Numeric Float
-           | Variable Char
-           | ValueTerm
+-- | Definition of an atomic value.
+data Value = Numeric Float -- ^ Numeric value
+           | Variable Char -- ^ Variable (single character)
              
 instance Show Value where
   show (Numeric f)  = show f
   show (Variable c) = show c
 
+-- | Definition of token (lexeme) types extracted by the lexer.
 data Token = TokenOp Op | TokenFn Fn | TokenValue Value | TokenBrOpen | TokenBrClose | TokenNeg
              deriving (Show)
 
+-- | Error data type.
 data ParseError = ParseError String
                 deriving (Show)
 
+-- | Tokenizes a string containing a mathematical expression into a list of tokens or returns an error.
 tokenize :: String -> Either ParseError [Token]
 tokenize [] = Right []
 tokenize s@(c:cs)
@@ -88,8 +110,7 @@ tokenize s@(c:cs)
           readInt s = span isDigit s
           readChar cs s = if elem (head s) cs then (head s:[], tail s) else ("", s)
 
-token0 = TokenValue (Numeric 0.0)
-
+-- | Postprocesses a token stream to manage unary negatives and implcit multiplies.
 postProcessTokenStream :: [Token] -> [Token]
 postProcessTokenStream [] = []
 postProcessTokenStream tokens = postProc Nothing tokens
@@ -100,16 +121,18 @@ postProcessTokenStream tokens = postProc Nothing tokens
         postProc (Just (TokenValue _)) (v@(TokenValue _):tokens)   = TokenOp Mul : v : postProc (Just v) tokens
         postProc _                     (token:tokens)         = token : postProc (Just token) tokens
         postProc _                     []                     = []
-        
-data Expr = ExprOp Op Expr Expr
-          | ExprFn Fn Expr
-          | ExprValue Value
+
+-- | Definition of an expression tree.        
+data Expr = ExprOp Op Expr Expr -- ^ Binary operation
+          | ExprFn Fn Expr      -- ^ Unary function call
+          | ExprValue Value     -- ^ Atomic value
 
 instance Show Expr where
   show (ExprOp op expr1 expr2) = "(" ++ (show op) ++ " " ++ (show expr1) ++ " " ++ (show expr2) ++ ")"
   show (ExprFn fn expr)        = "(" ++ (show fn) ++ " " ++ (show expr) ++ ")"
   show (ExprValue val)         = show val
 
+-- | Parses a infix token stream to a postfix token stream if possible or returns an error.
 infix2postfix :: [Token] -> Either ParseError [Token]
 infix2postfix ts =
   case in2post [] [] ts of
@@ -156,7 +179,7 @@ infix2postfix ts =
         windup outQ (fn@(TokenFn _):reststk) = windup (fn:outQ) reststk
         windup outQ _ = Left $ ParseError "Mismatched parantheses"
 
-                                            
+-- | Parses a string into an expression tree if possible or returns an error.                                            
 parse :: String -> Either ParseError Expr
 parse s = do
   ifts <- postProcessTokenStream <$> tokenize s
