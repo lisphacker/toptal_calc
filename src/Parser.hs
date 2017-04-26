@@ -104,75 +104,11 @@ postProcessTokenStream tokens = postProc Nothing tokens
 data Expr = ExprOp Op Expr Expr
           | ExprFn Fn Expr
           | ExprValue Value
-          | ExprTerm
 
 instance Show Expr where
   show (ExprOp op expr1 expr2) = "(" ++ (show op) ++ " " ++ (show expr1) ++ " " ++ (show expr2) ++ ")"
   show (ExprFn fn expr)        = "(" ++ (show fn) ++ " " ++ (show expr) ++ ")"
   show (ExprValue val)         = show val
-  show ExprTerm                = "<ExprTerm>"
-
-data OpOrFn = OFOp Op | OFFn Fn | OFBrOpen | OFTerm
-  deriving (Show)
-
-opfnOp (OFOp op) = op
-opfnFn (OFFn fn) = fn
-
-{-
-parseTokenStream :: [Token] -> (Expr, [Token])
-parseTokenStream tokens = parse' [OFTerm] [ExprTerm] [ValueTerm] tokens
-  where parse' opStk exprStk valStk [] = cleanupStacks opStk exprStk valStk
-        parse' opStk exprStk valStk (TokenBrOpen:ts) = let (expr, ts') = parse' [OFTerm] [ExprTerm] [ValueTerm] ts
-                                                       in parse' opStk (expr:exprStk) (ValueTerm:valStk) ts'
-        parse' opStk exprStk valStk (TokenBrClose:ts) = cleanupStacks opStk exprStk valStk
-        parse' opStk exprStk valStk ((TokenFn fn):ts) = parse' ((TokenFn fn):opStk) exprStk valStkl ts
-        parse' opStk exprStk valStk ((TokenOp (Op op)):ts) =
-          let opStkTop = head opStk
-          in if prec op < prec opStkTop
-             then
-               let (opStk', exprStk', valStk', expr) = cleanupStacks opStk exprStk valStk
-               in parse' (Op op):opStk' (expr:exprStk') valStk' ts
-             else
-               parse' (Op op):opStk exprStk valStk ts
-        parse' opStk exprStk valStk ((TokenValue val):ts) =
-          let la = listToMaybe ts
-              opStkTop = head opStk
-          in if la == TokenBrOpen
-             then
-               error "Should not reach here"
-             else
-               if stkTop == OpTerm
-               then
-                 parse' opStk exprStk valStk ts
-               else
-                 let (right, exprStk') = fromJust $ uncons exprStk
-                     (op, opStk) = fromJust $ uncons opStk
-                     
--}
-
-{-
-parseTokenStream :: [Token] -> Either ParseError (Expr, [Token])
-parseTokenStream ts = parse' [OFTerm] [ExprTerm] ts
-  where parse' opStk exprStk [] = windup opStk exprStk
-        parse' opStk exprStk ((TokenValue val):ts) = parse' opStk ((ExprValue val):exprStk) ts
-        parse' opStk exprStk ((TokenFn fn):ts) = parse' ((OFFn fn):opStk) exprStk ts
-        parse' opStk exprStk ((TokenOp op):ts) = 
-
-        windup opStk exprStk = trace ("opStk = " ++ (show opStk) ++ ", exprStk = " ++ (show exprStk)) $ Left $ ParseError "X"
-        makeOpExpr opStk exprStk = if length opStk == 0
-                                   then
-                                     ([], [], Left $ ParseError "Expected an operator")
-                                   else
-                                     case length exprStk of
-                                       0 -> ([], [], Left $ ParseError "Operator require two parameters, found none")
-                                       1 -> ([], [], Left $ ParseError "Operator require two parameters, found only one")
-                                       _ -> let op = opfnOp $ head opStk
-                                                expr1 = head exprStk
-                                                expr2 = (head . tail) exprStk
-                                                opStk' = tail opStk
-                                                exprStk' = (tail . tail) exprStk
-                                            in (opStk', exprStk', Right $ ExprOp op expr1 expr2)
--}
 
 infix2postfix :: [Token] -> Either ParseError [Token]
 infix2postfix ts =
@@ -217,16 +153,17 @@ infix2postfix ts =
 
         windup outQ [] = Right outQ
         windup outQ (op@(TokenOp _):reststk) = windup (op:outQ) reststk
+        windup outQ (fn@(TokenFn _):reststk) = windup (fn:outQ) reststk
         windup outQ _ = Left $ ParseError "Mismatched parantheses"
 
+                                            
 parse :: String -> Either ParseError Expr
-parse s = let ets = postProcessTokenStream <$> tokenize s
-          in case ets of
-               Left e -> Left e
-               Right ts ->
-                 case infix2postfix ts of
-                   Left e' -> Left e'
-                   Right ts' -> post2tree [] ts'
+parse s = do
+  ifts <- postProcessTokenStream <$> tokenize s
+  pfts <- infix2postfix ifts
+  expr <- post2tree [] pfts
+  return expr
+  
   where post2tree (stkTop:[]) [] = Right stkTop
         post2tree stk ((TokenValue val):ts) = post2tree ((ExprValue val):stk) ts
         post2tree stk ((TokenOp op):ts) = if length stk >= 2
