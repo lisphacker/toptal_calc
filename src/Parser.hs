@@ -1,6 +1,10 @@
 module Parser where
 
 import Data.Char
+import Data.Maybe
+import Text.Read
+import Control.Applicative
+import Control.Monad
 
 data Op = Add | Sub | Mul | Div | Eq | OpTerm
 
@@ -14,11 +18,12 @@ instance Show Op where
 data Assoc = L | R
 
 prec :: Op -> Int
-prec Add = 2
-prec Sub = 2
-prec Mul = 3
-prec Div = 3
-prec Eq  = 0
+prec Add    = 2
+prec Sub    = 2
+prec Mul    = 3
+prec Div    = 3
+prec Eq     = 0
+prec OpTerm = -100
 
 assoc :: Op -> Assoc
 assoc Add = L
@@ -44,24 +49,29 @@ instance Show Value where
 data Token = TokenOp Op | TokenFn Fn | TokenValue Value | TokenBrOpen | TokenBrClose | TokenNeg
              deriving (Show)
 
-tokenize :: String -> [Token]
-tokenize [] = []
+data ParseError = ParseError String
+                deriving (Show)
+
+tokenize :: String -> Either ParseError [Token]
+tokenize [] = Right []
 tokenize s@(c:cs)
   | c == ' '          = tokenize cs
-  | c == '+'          = TokenOp Add : tokenize cs
-  | c == '-'          = TokenOp Sub : tokenize cs
-  | c == '*'          = TokenOp Mul : tokenize cs
-  | c == '/'          = TokenOp Div : tokenize cs
-  | c == '='          = TokenOp Eq : tokenize cs
-  | c == '('          = TokenBrOpen : tokenize cs
-  | c == ')'          = TokenBrClose : tokenize cs
-  | take 3 s == "log" = TokenFn Log : tokenize (drop 3 s)
-  | take 3 s == "ln"  = TokenFn Ln : tokenize (drop 3 s)
-  | isAlpha c         = TokenValue (Variable c) : tokenize cs
+  | c == '+'          = ((:) (TokenOp Add)) <$> tokenize cs
+  | c == '-'          = ((:) (TokenOp Sub)) <$> tokenize cs
+  | c == '*'          = ((:) (TokenOp Mul)) <$> tokenize cs
+  | c == '/'          = ((:) (TokenOp Div)) <$> tokenize cs
+  | c == '='          = ((:) (TokenOp Eq)) <$> tokenize cs
+  | c == '('          = ((:) (TokenBrOpen)) <$> tokenize cs
+  | c == ')'          = ((:) (TokenBrClose)) <$> tokenize cs
+  | take 3 s == "log" = ((:) (TokenFn Log)) <$> tokenize (drop 3 s)
+  | take 3 s == "ln"  = ((:) (TokenFn Ln)) <$> tokenize (drop 3 s)
+  | isAlpha c         = ((:) (TokenValue (Variable c))) <$> tokenize cs
   | c == '.'          = parseNumber s
   | isDigit c         = parseNumber s
     where parseNumber s = let s' = readNumber s
-                              in TokenValue (Numeric (read s')) : tokenize (drop (length s') s)
+                              in case readMaybe s' of
+                                   Nothing  -> Left $ ParseError $ "Unable to parsee number at " ++ (take 10 s)
+                                   Just val -> ((:) (TokenValue (Numeric val))) <$> tokenize (drop (length s') s)
           readNumber s = let (n1, r1) = testS readInt s
                              (dot, r2) = testS (readChar ".") r1
                              (n2, r3) = testS readInt r2
@@ -69,6 +79,7 @@ tokenize s@(c:cs)
                              (sgn, r5) = testS (readChar "+-") r4
                              (n3, _) = testS readInt r5
                          in if e == "" then n1 ++ dot ++ n2 else n1 ++ dot ++ n2 ++ e ++ sgn ++ n3
+                                
           testS f s = if s == "" then ("", "") else f s
           readInt s = span isDigit s
           readChar cs s = if elem (head s) cs then (head s:[], tail s) else ("", s)
@@ -81,10 +92,11 @@ postProcessTokenStream tokens = postProc Nothing tokens
   where postProc Nothing               ((TokenOp Sub):tokens) = TokenNeg : postProc (Just TokenNeg) tokens
         postProc (Just TokenBrOpen)    ((TokenOp Sub):tokens) = TokenNeg : postProc (Just TokenNeg) tokens
         postProc (Just (TokenOp _))    ((TokenOp Sub):tokens) = TokenNeg : postProc (Just TokenNeg) tokens
-        postProc (Just (TokenValue v)) (TokenBrOpen:tokens)   = TokenOp Mul : TokenBrOpen : postProc (Just TokenBrOpen) tokens
+        postProc (Just (TokenValue _)) (TokenBrOpen:tokens)   = TokenOp Mul : TokenBrOpen : postProc (Just TokenBrOpen) tokens
+        postProc (Just (TokenValue _)) (v@(TokenValue _):tokens)   = TokenOp Mul : v : postProc (Just v) tokens
         postProc _                     (token:tokens)         = token : postProc (Just token) tokens
         postProc _                     []                     = []
-  
+{-  
 data Expr = ExprOp Op Expr Expr
           | ExprFn Fn Expr
           | ExprValue Value
@@ -96,12 +108,44 @@ instance Show Expr where
   show (ExprValue val)         = show val
 
 data OpOrFn = OFOp Op | OFFn Fn | OFTerm
+-}
 
+{-
 parseTokenStream :: [Token] -> (Expr, [Token])
-parseTokenStream tokens = parse' [OFTerm] [ExprTerm] tokens
-  where parse' (TokenBrOpen:ts) opStk valStk = let (expr, ts') = parse' ts 
-        
+parseTokenStream tokens = parse' [OFTerm] [ExprTerm] [ValueTerm] tokens
+  where parse' opStk exprStk valStk [] = cleanupStacks opStk exprStk valStk
+        parse' opStk exprStk valStk (TokenBrOpen:ts) = let (expr, ts') = parse' [OFTerm] [ExprTerm] [ValueTerm] ts
+                                                       in parse' opStk (expr:exprStk) (ValueTerm:valStk) ts'
+        parse' opStk exprStk valStk (TokenBrClose:ts) = cleanupStacks opStk exprStk valStk
+        parse' opStk exprStk valStk ((TokenFn fn):ts) = parse' ((TokenFn fn):opStk) exprStk valStkl ts
+        parse' opStk exprStk valStk ((TokenOp (Op op)):ts) =
+          let opStkTop = head opStk
+          in if prec op < prec opStkTop
+             then
+               let (opStk', exprStk', valStk', expr) = cleanupStacks opStk exprStk valStk
+               in parse' (Op op):opStk' (expr:exprStk') valStk' ts
+             else
+               parse' (Op op):opStk exprStk valStk ts
+        parse' opStk exprStk valStk ((TokenValue val):ts) =
+          let la = listToMaybe ts
+              opStkTop = head opStk
+          in if la == TokenBrOpen
+             then
+               error "Should not reach here"
+             else
+               if stkTop == OpTerm
+               then
+                 parse' opStk exprStk valStk ts
+               else
+                 let (right, exprStk') = fromJust $ uncons exprStk
+                     (op, opStk) = fromJust $ uncons opStk
+                     
+-}
 
+{-
+parseTokenStream :: [Token] -> Maybe (Expr, [Token])
+parseTokenStream _ = Nothing
 
 parse :: String -> Expr
-parse = fst . parseTokenStream . postProcessTokenStream . tokenize
+parse = fst . parseTokenStream . postProcessTokenStream <$> tokenize
+-}
