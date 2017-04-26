@@ -5,6 +5,7 @@ import Data.Maybe
 import Text.Read
 import Control.Applicative
 import Control.Monad
+import Debug.Trace
 
 data Op = Add | Sub | Mul | Div | Eq | OpTerm
 
@@ -96,7 +97,7 @@ postProcessTokenStream tokens = postProc Nothing tokens
         postProc (Just (TokenValue _)) (v@(TokenValue _):tokens)   = TokenOp Mul : v : postProc (Just v) tokens
         postProc _                     (token:tokens)         = token : postProc (Just token) tokens
         postProc _                     []                     = []
-{-  
+        
 data Expr = ExprOp Op Expr Expr
           | ExprFn Fn Expr
           | ExprValue Value
@@ -106,9 +107,13 @@ instance Show Expr where
   show (ExprOp op expr1 expr2) = "(" ++ (show op) ++ " " ++ (show expr1) ++ " " ++ (show expr2) ++ ")"
   show (ExprFn fn expr)        = "(" ++ (show fn) ++ " " ++ (show expr) ++ ")"
   show (ExprValue val)         = show val
+  show ExprTerm                = "<ExprTerm>"
 
-data OpOrFn = OFOp Op | OFFn Fn | OFTerm
--}
+data OpOrFn = OFOp Op | OFFn Fn | OFBrOpen | OFTerm
+  deriving (Show)
+
+opfnOp (OFOp op) = op
+opfnFn (OFFn fn) = fn
 
 {-
 parseTokenStream :: [Token] -> (Expr, [Token])
@@ -143,9 +148,65 @@ parseTokenStream tokens = parse' [OFTerm] [ExprTerm] [ValueTerm] tokens
 -}
 
 {-
-parseTokenStream :: [Token] -> Maybe (Expr, [Token])
-parseTokenStream _ = Nothing
+parseTokenStream :: [Token] -> Either ParseError (Expr, [Token])
+parseTokenStream ts = parse' [OFTerm] [ExprTerm] ts
+  where parse' opStk exprStk [] = windup opStk exprStk
+        parse' opStk exprStk ((TokenValue val):ts) = parse' opStk ((ExprValue val):exprStk) ts
+        parse' opStk exprStk ((TokenFn fn):ts) = parse' ((OFFn fn):opStk) exprStk ts
+        parse' opStk exprStk ((TokenOp op):ts) = 
 
-parse :: String -> Expr
-parse = fst . parseTokenStream . postProcessTokenStream <$> tokenize
+        windup opStk exprStk = trace ("opStk = " ++ (show opStk) ++ ", exprStk = " ++ (show exprStk)) $ Left $ ParseError "X"
+        makeOpExpr opStk exprStk = if length opStk == 0
+                                   then
+                                     ([], [], Left $ ParseError "Expected an operator")
+                                   else
+                                     case length exprStk of
+                                       0 -> ([], [], Left $ ParseError "Operator require two parameters, found none")
+                                       1 -> ([], [], Left $ ParseError "Operator require two parameters, found only one")
+                                       _ -> let op = opfnOp $ head opStk
+                                                expr1 = head exprStk
+                                                expr2 = (head . tail) exprStk
+                                                opStk' = tail opStk
+                                                exprStk' = (tail . tail) exprStk
+                                            in (opStk', exprStk', Right $ ExprOp op expr1 expr2)
+-}
+
+parseTokenStream :: [Token] -> Either ParseError [Token]
+parseTokenStream ts = in2post [] [] ts
+  where in2post outQ stk [] = outQ
+        in2post outQ stk (v@(TokenValue _):ts) = in2post (v:outQ) stk ts
+        in2post outQ stk (fn@(TokenFn _):ts) = in2post outQ (fn:stk) ts
+        in2post outQ stk ((TokenOp op):ts) = let (op', stk', outQ') = processOp op stk outQ
+                                             in in2post outQ' ((TokenOp op):stk) ts
+
+        processOp op stk outQ = case 
+
+        {-
+        parse' opStk exprStk ((TokenFn fn):ts) = parse' ((OFFn fn):opStk) exprStk ts
+        parse' opStk exprStk ((TokenOp op):ts) = 
+
+        windup opStk exprStk = trace ("opStk = " ++ (show opStk) ++ ", exprStk = " ++ (show exprStk)) $ Left $ ParseError "X"
+        makeOpExpr opStk exprStk = if length opStk == 0
+                                   then
+                                     ([], [], Left $ ParseError "Expected an operator")
+                                   else
+                                     case length exprStk of
+                                       0 -> ([], [], Left $ ParseError "Operator require two parameters, found none")
+                                       1 -> ([], [], Left $ ParseError "Operator require two parameters, found only one")
+                                       _ -> let op = opfnOp $ head opStk
+                                                expr1 = head exprStk
+                                                expr2 = (head . tail) exprStk
+                                                opStk' = tail opStk
+                                                exprStk' = (tail . tail) exprStk
+                                            in (opStk', exprStk', Right $ ExprOp op expr1 expr2)
+
+
+-}
+{-
+parse :: String -> Either ParseError Expr
+parse s = let ets = postProcessTokenStream <$> tokenize s
+          in case ets of
+               Left e -> Left e
+               Right ts -> fmap fst $ parseTokenStream ts
+
 -}
