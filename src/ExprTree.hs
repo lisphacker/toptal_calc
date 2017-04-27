@@ -34,7 +34,7 @@ instance Functor (GenExprTree op fn) where
   fmap f (ExprValue v) = ExprValue (f v)
 
 -- | Binary operations.
-data Op = Add | Sub | Mul | Div | Eq | OpTerm
+data Op = Add | Sub | Mul | Div | Eq
         deriving (Eq)
 
 instance Show Op where

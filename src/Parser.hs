@@ -34,7 +34,6 @@ prec Sub    = 2
 prec Mul    = 3
 prec Div    = 3
 prec Eq     = 0
-prec OpTerm = -100
 
 -- | Returns operator associativity.
 assoc :: Op -> Assoc
@@ -99,7 +98,9 @@ validateTokenStream :: [Token] -> Either ParseError [Token]
 validateTokenStream ts = let nvar = countVariables ts
                              neq  = countEq ts
                              nfn  = countFn ts
+                             ndiv = countDiv ts
                          in if neq == 0
+                               -- Expression
                             then
                               if nvar == 0
                               then
@@ -108,12 +109,17 @@ validateTokenStream ts = let nvar = countVariables ts
                                 Left $ ParseError "Cannot resolve expression to a constant value due to unresolvable variables"
                             else
                               if neq == 1
+                                 -- Equation
                               then
                                 if nvar == 1
                                 then
                                   if nfn == 0
                                   then
-                                    Right ts
+                                    if ndiv == 0
+                                    then
+                                      Right ts
+                                    else
+                                      Left $ ParseError "Cannot perform division operations in a linear equation"
                                   else
                                     Left $ ParseError "Functions are not permitted in a linear equation"
                                 else
@@ -125,12 +131,14 @@ validateTokenStream ts = let nvar = countVariables ts
         countVar []                             = ""
         countVar ((TokenValue (Variable v)):ts) = v:(countVar ts)
         countVar (t:ts)                         = countVar ts
+
+        countEq = countOp Eq 0
+        countDiv = countOp Div 0
         
-        countEq = countEq' 0
-        
-        countEq' c []                = c
-        countEq' c ((TokenOp Eq):ts) = countEq' (c + 1) ts
-        countEq' c (t:ts)            = countEq' c ts
+        countOp _  c []                 = c
+        countOp op c ((TokenOp op'):ts) = let c' = if op == op' then c + 1 else c
+                                              in countOp op c' ts
+        countOp op c (_:ts)             = countOp op c ts
   
         countFn = countFn' 0
         
@@ -145,22 +153,11 @@ postProcessTokenStream tokens = postProc Nothing tokens
   where postProc Nothing               ((TokenOp Sub):tokens) = TokenNeg : postProc (Just TokenNeg) tokens
         postProc (Just TokenBrOpen)    ((TokenOp Sub):tokens) = TokenNeg : postProc (Just TokenNeg) tokens
         postProc (Just (TokenOp _))    ((TokenOp Sub):tokens) = TokenNeg : postProc (Just TokenNeg) tokens
+        postProc (Just TokenNeg)       ((TokenOp Sub):tokens) = TokenNeg : postProc (Just TokenNeg) tokens
         postProc (Just (TokenValue _)) (TokenBrOpen:tokens)   = TokenOp Mul : TokenBrOpen : postProc (Just TokenBrOpen) tokens
         postProc (Just (TokenValue _)) (v@(TokenValue _):tokens)   = TokenOp Mul : v : postProc (Just v) tokens
         postProc _                     (token:tokens)         = token : postProc (Just token) tokens
         postProc _                     []                     = []
-
-{-
--- | Definition of an expression tree.        
-data Expr = ExprOp Op Expr Expr -- ^ Binary operation
-          | ExprFn Fn Expr      -- ^ Unary function call
-          | ExprValue Value     -- ^ Atomic value
-
-instance Show Expr where
-  show (ExprOp op expr1 expr2) = "(" ++ (show op) ++ " " ++ (show expr1) ++ " " ++ (show expr2) ++ ")"
-  show (ExprFn fn expr)        = "(" ++ (show fn) ++ " " ++ (show expr) ++ ")"
-  show (ExprValue val)         = show val
--}
 
 -- | Definition of an expression tree.        
 type Expr = ExprTree Value
