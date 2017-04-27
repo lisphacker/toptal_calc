@@ -83,17 +83,27 @@ flattenPolyExpr (ExprOp op e1 e2) =
       
     processMul ts1 ts2 = simplifyPolyTerm $ [(o1 + o2, c1 * c2) | (o1, c1) <- ts1, (o2, c2) <- ts2]
                                              
-{-
 solvePolyExpr (ExprValue (PolyTerm ts)) =
-  let ts' = pad $ simplifyPolyTerm ts
-  in ts'
-  where pad ts = 
-  -}
+  let ts' = pad 0 $ simplifyPolyTerm ts
+      order = length ts' - 1
+  in case order of
+    1 -> let a = snd (ts' !! 1)
+             b = snd (ts' !! 0)
+         in [-b / a]
+    2 -> let a = snd (ts' !! 2)
+             b = snd (ts' !! 1)
+             c = snd (ts' !! 0)
+             rootTerm = sqrt (b * b - 4 * a * c)
+         in [(-b + rootTerm) / (2 * a), (-b - rootTerm) / (2 * a)]
+    otherwise -> error "Unable to solve non-linear equations"
+    
+  where pad _  []         = []
+        pad o' ((o,c):ts) = if o == o' then (o,c):pad (o' + 1) ts else (o',0):pad (o' + 1) ((o,c):ts)
   
 solveLinEq (ExprOp Eq lhs rhs) =
   let expr = ExprOp Sub lhs rhs
       fe = flattenPolyExpr expr
-  in fe--solvePolyExpr fe
+  in solvePolyExpr fe
 
 processMathExpression s =
   case parse s of

@@ -7,7 +7,7 @@ Maintainer  : gautham@lisphacker.org
 Stability   : experimental
 Portability : POSIX
 
-Stores an exception tree.
+Generic expression tree.
 -}
 module ExprTree
   ( GenExprTree(..)
