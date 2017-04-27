@@ -193,6 +193,11 @@ infix2postfix ts =
                                processOp ((TokenOp op'):outQ) (tail stk) op
                              else
                                (outQ, stk)
+              TokenNeg    -> if op == Eq
+                             then
+                               processOp (TokenNeg:outQ) (tail stk) op
+                             else
+                               (outQ, stk)
               otherwise   -> (outQ, stk)
                                
         processBrClose outQ []                       = Left $ ParseError "Mismatched parantheses"
@@ -217,9 +222,9 @@ zeroExpr = ExprValue (Numeric 0.0)
 parse :: String -> Either ParseError Expr
 parse s = do
   ifts <- postProcessTokenStream <$> tokenize s
-  vifts <- validateTokenStream ifts
+  vifts <- validateTokenStream $ trace ("IF: " ++ show ifts) $ ifts
   pfts <- infix2postfix vifts
-  expr <- post2tree [] pfts
+  expr <- post2tree [] $ trace ("PF: " ++ show pfts) $ pfts
   return expr
   
   where post2tree []          []                    = Left $ ParseError "Empty input"
