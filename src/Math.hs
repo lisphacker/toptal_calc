@@ -1,3 +1,14 @@
+{-|
+Module      : Math
+Description : Mathematical expression solver
+Copyright   : (c) Gautham Ganapathy, 2017
+License     : BSD
+Maintainer  : gautham@lisphacker.org
+Stability   : experimental
+Portability : POSIX
+
+Solves aithmatic expressions as well as linear and quadratic equations in a single variable.
+-}
 module Math
   ( processMathExpression
   ) where
