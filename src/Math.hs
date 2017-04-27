@@ -121,7 +121,11 @@ processMathExpression s =
     Left (ParseError msg) -> "Error: " ++ msg
     Right expr ->
       case expr of
-        ExprOp Eq _ _ -> show $ solveLinEq $ convertTreeToPolyTree expr
+        ExprOp Eq _ _ -> let results = solveLinEq $ convertTreeToPolyTree expr
+                         in if length results == 1 then
+                              show $ head results
+                            else
+                              show results
         _             -> show $ evaluateExpr expr
 
 
