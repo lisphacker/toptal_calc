@@ -222,9 +222,9 @@ zeroExpr = ExprValue (Numeric 0.0)
 parse :: String -> Either ParseError Expr
 parse s = do
   ifts <- postProcessTokenStream <$> tokenize s
-  vifts <- validateTokenStream $ trace ("IF: " ++ show ifts) $ ifts
+  vifts <- validateTokenStream ifts
   pfts <- infix2postfix vifts
-  expr <- post2tree [] $ trace ("PF: " ++ show pfts) $ pfts
+  expr <- post2tree [] pfts
   return expr
   
   where post2tree []          []                    = Left $ ParseError "Empty input"
