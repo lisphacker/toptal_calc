@@ -10,9 +10,7 @@ Portability : POSIX
 Parses mathematics expressions into an expression tree using the Shunting Yard algorithm.
 -}
 module Parser
-       ( Op(..)
-       , Fn(..)
-       , Value(..)
+       ( Value(..)
        , Expr(..)
        , ParseError(..)
        , parse
@@ -23,16 +21,7 @@ import Data.List
 import Text.Read hiding (prec)
 import Debug.Trace
 
--- | Binary operations.
-data Op = Add | Sub | Mul | Div | Eq | OpTerm
-        deriving (Eq)
-
-instance Show Op where
-  show Add = "+"
-  show Sub = "-"
-  show Mul = "*"
-  show Div = "/"
-  show Eq  = "="
+import ExprTree
 
 -- | Operator associativity/
 data Assoc = L | R
@@ -54,13 +43,6 @@ assoc Sub = L
 assoc Mul = L
 assoc Div = L
 assoc Eq  = L
-
--- | Unary functions.
-data Fn = Log | Ln
-
-instance Show Fn where
-  show Log = "log"
-  show Ln  = "ln"
 
 -- | Definition of an atomic value.
 data Value = Numeric Float -- ^ Numeric value
@@ -168,6 +150,7 @@ postProcessTokenStream tokens = postProc Nothing tokens
         postProc _                     (token:tokens)         = token : postProc (Just token) tokens
         postProc _                     []                     = []
 
+{-
 -- | Definition of an expression tree.        
 data Expr = ExprOp Op Expr Expr -- ^ Binary operation
           | ExprFn Fn Expr      -- ^ Unary function call
@@ -177,6 +160,10 @@ instance Show Expr where
   show (ExprOp op expr1 expr2) = "(" ++ (show op) ++ " " ++ (show expr1) ++ " " ++ (show expr2) ++ ")"
   show (ExprFn fn expr)        = "(" ++ (show fn) ++ " " ++ (show expr) ++ ")"
   show (ExprValue val)         = show val
+-}
+
+-- | Definition of an expression tree.        
+type Expr = ExprTree Value
 
 -- | Parses a infix token stream to a postfix token stream if possible or returns an error.
 infix2postfix :: [Token] -> Either ParseError [Token]

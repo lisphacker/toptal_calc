@@ -1,23 +1,23 @@
 module Math where
 
+import ExprTree
 import Parser
 
-data PolyExpr = PolyExprOp Op PolyExpr PolyExpr
-              | PolyExprFn Fn PolyExpr
-              | PolyExprValue { coeff :: Float
-                              , order :: Int
-                              }
+-- | Definition of a polynomial term.
+data PolyTerm = PolyTerm { coeff :: Float
+                         , order :: Int
+                         }
 
-instance Show PolyExpr where
-  show (PolyExprOp op e1 e2) = "(" ++ show op ++ " " ++ show e1 ++ " " ++ show e2 ++ ")"
-  show (PolyExprFn fn e)     = "(" ++ show fn ++ " " ++ show e ++ ")"
-  show (PolyExprValue c o)   = show c ++ "x^" ++ show o
+instance Show PolyTerm where
+  show (PolyTerm c o) = show c ++ "x^" ++ show o
 
-convertTreeToPolyTree = convert'
-  where convert' (ExprOp op e1 e2)        = PolyExprOp op (convert' e1) (convert' e2)
-        convert' (ExprFn fn e)            = PolyExprFn fn (convert' e)
-        convert' (ExprValue (Numeric v))  = PolyExprValue v 0
-        convert' (ExprValue (Variable _)) = PolyExprValue 1 1
+-- | Definition of a polynomial expression tree.
+type PolyExpr = ExprTree PolyTerm
+
+convertTreeToPolyTree :: Expr -> PolyExpr
+convertTreeToPolyTree = fmap convert'
+  where convert' (Numeric v)  = PolyTerm v 0
+        convert' (Variable _) = PolyTerm 1 1
 
 evaluateExpr (ExprValue (Numeric v)) = v
 evaluateExpr (ExprOp op e1 e2) = let v1 = evaluateExpr e1
