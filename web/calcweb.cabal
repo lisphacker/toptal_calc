@@ -21,6 +21,7 @@ executable calc
                      , calc
                      , reflex
                      , reflex-dom
+                     , text
 
 library
   hs-source-dirs:      src
