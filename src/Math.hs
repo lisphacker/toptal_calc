@@ -10,8 +10,8 @@ Portability : POSIX
 Solves aithmatic expressions as well as linear and quadratic equations in a single variable.
 -}
 module Math
-  ( processMathExpression
-  ) where
+{-  ( processMathExpression
+  ) -}where
 
 import ExprTree
 import Parser
@@ -30,6 +30,12 @@ instance Show PolyTerm where
 
 -- | Definition of a polynomial expression tree.
 type PolyExpr = ExprTree PolyTerm
+
+-- | Error data type.
+data MathError = MathError String
+                deriving (Show)
+
+mathError = Left . MathError
 
 convertTreeToPolyTree :: Expr -> PolyExpr
 convertTreeToPolyTree = fmap convert'
@@ -72,62 +78,64 @@ simplifyPolyTerm ts =
       ts'' = map (\g -> foldl1 (\(o, cz) (_, cx) -> (o, cz + cx)) g) ts'
   in filter (\(_, c) -> c /= 0) ts''
 
-flattenPolyExpr :: PolyExpr -> PolyExpr
-flattenPolyExpr v@(ExprValue _) = v
+flattenPolyExpr :: PolyExpr -> Either MathError PolyExpr
+flattenPolyExpr v@(ExprValue _) = Right v
 flattenPolyExpr (ExprOp op e1 e2) =
   let fe1 = flattenPolyExpr e1
       fe2 = flattenPolyExpr e2
-      fe = flatten op fe1 fe2
   in
-    fe
+    case fe1 of
+      e@(Left _) -> e
+      Right e1   -> case fe2 of
+        e'@(Left _) -> e'
+        Right e2    -> flatten op e1 e2
   where
     flatten op (ExprValue (PolyTerm ts1)) (ExprValue (PolyTerm ts2)) = 
       case op of
-        Add -> ExprValue $ PolyTerm $ processAddSub (+) ts1 ts2
-        Sub -> ExprValue $ PolyTerm $ processAddSub (-) ts1 ts2
-        Mul -> ExprValue $ PolyTerm $ processMul ts1 ts2
-    flatten _ _ _ = error $ "Unable to reduce one or both of " ++ show e1 ++ " " ++ show e2
+        Add -> Right $ ExprValue $ PolyTerm $ processAddSub (+) ts1 ts2
+        Sub -> Right $ ExprValue $ PolyTerm $ processAddSub (-) ts1 ts2
+        Mul -> Right $ ExprValue $ PolyTerm $ processMul ts1 ts2
+    flatten _ _ _ = mathError $ "Unable to reduce one or both of " ++ show e1 ++ " " ++ show e2
     
     processAddSub fn ts1 ts2 =
       let (ts1', ts2') = matchPolyTerms ts1 ts2
       in simplifyPolyTerm $ map (\((o,c1),(_,c2)) -> (o,fn c1 c2)) $ zip ts1' ts2'
       
     processMul ts1 ts2 = simplifyPolyTerm $ [(o1 + o2, c1 * c2) | (o1, c1) <- ts1, (o2, c2) <- ts2]
-                                             
+
+solvePolyExpr :: PolyExpr -> Either MathError [Float]
 solvePolyExpr (ExprValue (PolyTerm ts)) =
   let ts' = pad 0 $ simplifyPolyTerm ts
       order = length ts' - 1
   in case order of
     1 -> let a = snd (ts' !! 1)
              b = snd (ts' !! 0)
-         in [-b / a]
+         in Right $ [-b / a]
     2 -> let a = snd (ts' !! 2)
              b = snd (ts' !! 1)
              c = snd (ts' !! 0)
              rootTerm = sqrt (b * b - 4 * a * c)
-         in [(-b + rootTerm) / (2 * a), (-b - rootTerm) / (2 * a)]
-    otherwise -> error "Unable to solve non-linear equations"
+         in Right $ [(-b + rootTerm) / (2 * a), (-b - rootTerm) / (2 * a)]
+    otherwise -> mathError "Unable to solve non-linear equations"
     
   where pad _  []         = []
         pad o' ((o,c):ts) = if o == o' then (o,c):pad (o' + 1) ts else (o',0):pad (o' + 1) ((o,c):ts)
-  
+        
+solveLinEq :: PolyExpr -> Either MathError [Float]
 solveLinEq (ExprOp Eq lhs rhs) =
   let expr = ExprOp Sub lhs rhs
-      fe = flattenPolyExpr expr
-  in solvePolyExpr fe
-
+  in case flattenPolyExpr expr of
+    Left e   ->  Left e
+    Right fe -> solvePolyExpr fe
+        
 processMathExpression s =
   case parse s of
-    Left (ParseError msg) -> "Error: " ++ msg
-    Right expr ->
-      case expr of
-        ExprOp Eq _ _ -> let results = solveLinEq $ convertTreeToPolyTree expr
-                         in if length results == 1 then
-                              show $ head results
-                            else
-                              show results
-        _             -> show $ evaluateExpr expr
-
+    Left (ParseError msg) -> Left $ MathError $ "Parse error: " ++ msg
+    Right expr -> case expr of
+        ExprOp Eq _ _ -> case solveLinEq $ convertTreeToPolyTree expr of
+          Left (MathError msg) -> Left $ MathError $ "Math error: " ++ msg
+          Right results        -> Right results
+        _             -> Right $ [evaluateExpr expr]
 
 ------------------------------------------------------------
 
