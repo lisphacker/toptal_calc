@@ -22,6 +22,8 @@ executable calc
                      , reflex
                      , reflex-dom
                      , text
+                     , file-embed
+                     , containers
 
 library
   hs-source-dirs:      src
