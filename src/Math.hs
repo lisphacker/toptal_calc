@@ -34,7 +34,7 @@ type PolyExpr = ExprTree PolyTerm
 
 -- | Error data type.
 data MathError = MathError String
-                deriving (Show)
+               deriving (Eq, Show)
 
 mathError = Left . MathError
 
