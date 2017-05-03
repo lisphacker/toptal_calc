@@ -5,17 +5,8 @@ import Data.Text
 import Data.FileEmbed
 import Data.Map.Strict
 
-{-
-main = mainWidget $ el "div" $ do
-  t <- textInput def
-  let (errDynText, resultDynText) = splitDynPure  $ fmap runMath $ _textInput_value t
-  el "p" $ dynText errDynText
-  el "p" $ dynText resultDynText
--}
-
-
 main :: IO ()
-main = mainWidgetWithCss $(embedFile "static/css/style.css") $ el "div" $ do
+main = mainWidgetWithCss $(embedFile "static/css/bootstrap.min.css") $ el "div" $ do
   t <- elClass "div" "input-group" $ do
     elClass "span" "input-group-addon" $ text "Input"
     textInputWithClass "form-control"

@@ -10,8 +10,9 @@ Portability : POSIX
 Solves aithmatic expressions as well as linear and quadratic equations in a single variable.
 -}
 module Math
-{-  ( processMathExpression
-  ) -}where
+  ( processMathExpression
+  , MathError(..)
+  ) where
 
 import ExprTree
 import Parser

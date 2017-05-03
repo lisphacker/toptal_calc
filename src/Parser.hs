@@ -204,6 +204,8 @@ infix2postfix ts =
                                
         processBrClose outQ []                       = parseError "Mismatched parantheses"
         processBrClose outQ (op@(TokenOp _):reststk) = processBrClose (op:outQ) reststk
+        processBrClose outQ (fn@(TokenFn _):reststk) = processBrClose (fn:outQ) reststk
+        processBrClose outQ (TokenNeg:reststk)       = processBrClose (TokenNeg:outQ) reststk
         processBrClose outQ stk                      = processBrClose' outQ stk
         
         processBrClose' outQ (TokenBrOpen:reststk) = processBrClose'' outQ reststk
