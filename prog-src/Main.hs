@@ -1,6 +1,7 @@
 module Main where
 
 import Math
+import Error
 import System.IO
 import System.Console.Haskeline
 
@@ -16,7 +17,7 @@ main = do
 
 runMath :: String -> String
 runMath input = case processMathExpression input of
-  Left (MathError msg) -> "*** " ++ msg ++ " ***"
+  Left (MathError ec) -> "*** " ++ show ec ++ " ***"
   Right v -> if length v == 1 then
                show $ head v
              else

@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings, RecursiveDo, ScopedTypeVariables, FlexibleContexts, TypeFamilies, ConstraintKinds, TemplateHaskell #-}
 import Reflex.Dom
 import Math
+import Error
 import Data.Text
 import Data.FileEmbed
 import Data.Map.Strict
@@ -21,7 +22,7 @@ textInputWithClass cls = let cfg = constDyn $ fromList [("class", cls)]
 noTxt = pack ""
 runMath :: Text -> (Text, Text)
 runMath input = case processMathExpression (unpack input) of
-                 Left (MathError msg) -> (pack $ if msg == "Parse error: Empty input" then "" else msg, noTxt)
-                 Right v              -> (noTxt, pack $ v')
+                 Left (MathError ec) -> (pack $ if ec == ErrEmptyInput then "" else ("Error: " ++ show ec), noTxt)
+                 Right v              -> (noTxt, pack $ "Preview: " ++ v')
                    where v' = if Prelude.length v == 1 then (show . Prelude.head) v else show v
 

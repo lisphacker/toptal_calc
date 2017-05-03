@@ -18,6 +18,7 @@ import ExprTree
 import Parser
 import Data.List
 import Debug.Trace
+import Error
 
 -- | Definition of a polynomial term.
 data PolyTerm = PolyTerm { terms :: [(Int, Float)] }
@@ -33,7 +34,7 @@ instance Show PolyTerm where
 type PolyExpr = ExprTree PolyTerm
 
 -- | Error data type.
-data MathError = MathError String
+data MathError = MathError ErrorCode
                deriving (Eq, Show)
 
 mathError = Left . MathError
@@ -96,7 +97,7 @@ flattenPolyExpr (ExprOp op e1 e2) =
         Add -> Right $ ExprValue $ PolyTerm $ processAddSub (+) ts1 ts2
         Sub -> Right $ ExprValue $ PolyTerm $ processAddSub (-) ts1 ts2
         Mul -> Right $ ExprValue $ PolyTerm $ processMul ts1 ts2
-    flatten _ _ _ = mathError $ "Unable to reduce one or both of " ++ show e1 ++ " " ++ show e2
+    flatten _ _ _ = mathError $ ErrUnableToReduceSubExprs (show e1) (show e2)
     
     processAddSub fn ts1 ts2 =
       let (ts1', ts2') = matchPolyTerms ts1 ts2
@@ -117,7 +118,7 @@ solvePolyExpr (ExprValue (PolyTerm ts)) =
              c = snd (ts' !! 0)
              rootTerm = sqrt (b * b - 4 * a * c)
          in Right $ [(-b + rootTerm) / (2 * a), (-b - rootTerm) / (2 * a)]
-    otherwise -> mathError "Unable to solve non-linear equations"
+    otherwise -> mathError ErrCannotSolveNonLinEqn
     
   where pad _  []         = []
         pad o' ((o,c):ts) = if o == o' then (o,c):pad (o' + 1) ts else (o',0):pad (o' + 1) ((o,c):ts)
@@ -128,13 +129,14 @@ solveLinEq (ExprOp Eq lhs rhs) =
   in case flattenPolyExpr expr of
     Left e   ->  Left e
     Right fe -> solvePolyExpr fe
-        
+
+-- | Parses and evaluates math expressions, and solves linear/quadratic equations.
 processMathExpression s =
   case parse s of
-    Left (ParseError msg) -> Left $ MathError $ "Parse error: " ++ msg
+    Left (ParseError ec) -> Left $ MathError ec
     Right expr -> case expr of
         ExprOp Eq _ _ -> case solveLinEq $ convertTreeToPolyTree expr of
-          Left (MathError msg) -> Left $ MathError $ "Math error: " ++ msg
+          Left (MathError ec) -> Left $ MathError ec
           Right results        -> Right results
         _             -> Right $ [evaluateExpr expr]
 
