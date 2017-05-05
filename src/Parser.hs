@@ -67,6 +67,8 @@ tokenize :: String -> Either ParseError [Token]
 tokenize [] = Right []
 tokenize s@(c:cs)
   | c == ' ' = tokenize cs
+  | c == '\t' = tokenize cs
+  
   | c == '+' = ((:) (TokenOp Add)) <$> tokenize cs
   | c == '-' = ((:) (TokenOp Sub)) <$> tokenize cs
   | c == '*' = ((:) (TokenOp Mul)) <$> tokenize cs

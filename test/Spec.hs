@@ -8,17 +8,20 @@ import Control.Monad
 import Error
 import Math
 
-expressionTests =  [ ("(3+(4-1))*5",[30.0]) ]
+expressionTests =  [ ("(3+(4-1))*5",[30.0])
+                   , ("3--(---2)",[1.0])]
 
 linEqnTests = [ ("2 * x + 0.5 = 1",[0.25])
               , ("2x + 1 = 2(1-x)",[0.25])
+              , ("30.0 + x=0",[-30.0])
               ]
 
 quadEqnTests = [ ("xx-1=0",[-1.0, 1.0])
                , ("2xx - 11x + 15=0",[2.5, 3.0])
                ]
 
-unexpCharTests = [("a%10=0", ErrUnexpectedCharInInputAt "%10=0")]
+unexpCharTests = [ ("a%10=0", ErrUnexpectedCharInInputAt "%10=0")
+                 ]
 
 runMathWithVal expr = case processMathExpression expr of
   Left (MathError ec) -> error $ show ec
