@@ -46,10 +46,24 @@ instance Show Op where
 
 -- | Unary functions.
 data Fn = Log | Ln
+        | Sin | Cos | Tan
+        | ASin | ACos | ATan
+        | Sqrt
+        | Deg2Rad | Rad2Deg
+        
 
 instance Show Fn where
-  show Log = "log"
-  show Ln  = "ln"
+  show Log     = "log"
+  show Ln      = "ln"
+  show Sin     = "sin"
+  show Cos     = "cos"
+  show Tan     = "tan"
+  show ASin    = "sin"
+  show ACos    = "cos"
+  show ATan    = "tan"
+  show Sqrt    = "sqrt"
+  show Deg2Rad = "deg2rad"
+  show Rad2Deg = "rad2deg"
 
 -- | Expression tree over value types.
 type ExprTree val = GenExprTree Op Fn val

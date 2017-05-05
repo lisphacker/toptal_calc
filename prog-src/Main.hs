@@ -30,6 +30,7 @@ main = runInputT defaultSettings loop
       mInput <- getInputLine prompt
       case mInput of
         Just "exit" -> return()
+        Just "quit" -> return()
         Just input  -> do outputStrLn $ runMath input
                           loop
         Nothing     -> loop

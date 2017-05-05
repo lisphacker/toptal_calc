@@ -56,6 +56,15 @@ evaluateExpr (ExprFn fn e) = let v = evaluateExpr e
                              in eval' fn v
   where eval' Log v = (log v) / (log 10)
         eval' Ln v  = log v
+        eval' Sin v = sin v
+        eval' Cos v = cos v
+        eval' Tan v = tan v
+        eval' ASin v = asin v
+        eval' ACos v = acos v
+        eval' ATan v = atan v
+        eval' Sqrt v = sqrt v
+        eval' Deg2Rad v = v * pi / 180.0
+        eval' Rad2Deg v = v * 180.0 / pi
 
 matchPolyTerms ts1 ts2 =
   let ts1' = sortOn fst ts1

@@ -74,8 +74,19 @@ tokenize s@(c:cs)
   | c == '='          = ((:) (TokenOp Eq)) <$> tokenize cs
   | c == '('          = ((:) (TokenBrOpen)) <$> tokenize cs
   | c == ')'          = ((:) (TokenBrClose)) <$> tokenize cs
-  | take 3 s == "log" = ((:) (TokenFn Log)) <$> tokenize (drop 3 s)
-  | take 2 s == "ln"  = ((:) (TokenFn Ln)) <$> tokenize (drop 3 s)
+  
+  | take 3 s == "log"      = ((:) (TokenFn Log)) <$> tokenize (drop 3 s)
+  | take 2 s == "ln"       = ((:) (TokenFn Ln)) <$> tokenize (drop 2 s)
+  | take 3 s == "sin"      = ((:) (TokenFn Sin)) <$> tokenize (drop 3 s)
+  | take 3 s == "cos"      = ((:) (TokenFn Cos)) <$> tokenize (drop 3 s)
+  | take 3 s == "tan"      = ((:) (TokenFn Tan)) <$> tokenize (drop 3 s)
+  | take 4 s == "asin"     = ((:) (TokenFn ASin)) <$> tokenize (drop 4 s)
+  | take 4 s == "acos"     = ((:) (TokenFn ACos)) <$> tokenize (drop 4 s)
+  | take 4 s == "atan"     = ((:) (TokenFn ATan)) <$> tokenize (drop 4 s)
+  | take 4 s == "sqrt"     = ((:) (TokenFn Sqrt)) <$> tokenize (drop 4 s)
+  | take 7 s == "deg2rad"  = ((:) (TokenFn Deg2Rad)) <$> tokenize (drop 7 s)
+  | take 7 s == "rad2deg"  = ((:) (TokenFn Rad2Deg)) <$> tokenize (drop 7 s)
+  
   | isAlpha c         = ((:) (TokenValue (Variable c))) <$> tokenize cs
   | c == '.'          = parseNumber s
   | isDigit c         = parseNumber s
