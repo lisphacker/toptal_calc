@@ -7,13 +7,6 @@ import System.Console.Haskeline
 
 prompt = "> "
 
-main :: IO ()
-{-
-main = do
-  input <- getInputLine prompt
-  putStrLn $ processMathExpression input
-  main
--}
 
 runMath :: String -> String
 runMath input = case processMathExpression input of
@@ -22,7 +15,9 @@ runMath input = case processMathExpression input of
                show $ head v
              else
                show v
-               
+
+-- | Program entry point
+main :: IO ()
 main = runInputT defaultSettings loop
   where
     loop :: InputT IO ()

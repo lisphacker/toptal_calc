@@ -182,7 +182,8 @@ postProcessTokenStream tokens = postProc Nothing tokens
 -- | Definition of an expression tree.        
 type Expr = ExprTree Value
 
--- | Parses a infix token stream to a postfix token stream if possible or returns an error.
+-- | Parses a infix token stream to a postfix token stream if possible using the
+-- | Shunting Yard algorithm or returns an error.
 infix2postfix :: [Token] -> Either ParseError [Token]
 infix2postfix ts =
   case in2post [] [] ts of
@@ -240,7 +241,7 @@ infix2postfix ts =
 
 zeroExpr = ExprValue (Numeric 0.0)
 
--- | Parses a string into an expression tree if possible or returns an error.                                            
+-- | Parses a string into an expression tree if possible or returns an error.
 parse :: String -> Either ParseError Expr
 parse s = do
   ifts <- postProcessTokenStream <$> tokenize s
