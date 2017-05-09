@@ -21,13 +21,7 @@ data HistoryEntry = HistoryEntry { input :: Text
 main :: IO ()
 main = mainWidgetWithCss $(embedFile "static/css/bootstrap.min.css") $ el "div" $  mathWeb
 
-mathWeb :: ( DomBuilder t m
-           , DomBuilderSpace m ~ GhcjsDomSpace
-           , MonadFix m
-           , MonadHold t m
-           , PostBuild t m
-           )
-           => m ()
+mathWeb :: MonadWidget t m => m ()
 mathWeb = do
   elClass  "div" "" $ do
     rec ioEnteredEvent <- mathInput
@@ -37,13 +31,7 @@ mathWeb = do
         
     return ()
 
-genHistoryElement :: ( DomBuilder t m
-                     , DomBuilderSpace m ~ GhcjsDomSpace
-                     , MonadFix m
-                     , MonadHold t m
-                     , PostBuild t m
-                     )
-                     => Dynamic t HistoryEntry -> m ()
+genHistoryElement :: MonadWidget t m => Dynamic t HistoryEntry -> m ()
 genHistoryElement histDyn = el "div" $ do
   elClass "table" "table table-bordered" $ do
     el "tbody" $ do
@@ -55,13 +43,7 @@ genHistoryElement histDyn = el "div" $ do
         elClass "td" "col-sm-10" $ dynText $ fmap output histDyn
   return ()
 
-genHistoryElements :: ( DomBuilder t m
-                      , DomBuilderSpace m ~ GhcjsDomSpace
-                      , MonadFix m
-                      , MonadHold t m
-                      , PostBuild t m
-                      )
-                      => Dynamic t [HistoryEntry] -> m ()
+genHistoryElements :: MonadWidget t m => Dynamic t [HistoryEntry] -> m ()
 genHistoryElements history = do
   simpleList history genHistoryElement
   return ()
@@ -70,13 +52,7 @@ genHistoryElements history = do
 keyCodeIs :: Key -> KeyCode -> Bool
 keyCodeIs k c = keyCodeLookup c == k
 
-mathInput :: ( DomBuilder t m
-             , DomBuilderSpace m ~ GhcjsDomSpace
-             , MonadFix m
-             , MonadHold t m
-             , PostBuild t m
-             )
-             => m (Event t HistoryEntry)
+mathInput :: MonadWidget t m => m (Event t HistoryEntry)
 mathInput = do
   rec mathInput <- elClass "div" "input-group" $ do
         elClass "span" "input-group-addon" $ text "Input"
