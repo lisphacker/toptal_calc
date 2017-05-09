@@ -6,7 +6,7 @@ Command-line calculator written in Haskell for evaluating simple mathematical ex
 * Reflex-frp (for web version) (https://github.com/reflex-frp/reflex-platform)
 
 ## Building command line version
-Change to the root folder for the project and run the following command:
+Change to the root directory for the project and run the following command:
 
 ```$ stack setup```
 
@@ -17,4 +17,17 @@ To run the automated tests:
 To run the command-line calculator:
 
 ```$ stack exec calc```
+
+## Building the web version
+These commands need to be run from the reflex-frp environment.
+
+For the first build, configure the package to use ghcjs.
+
+```$ cabal configure --ghcjs```
+
+To build the application, run:
+
+```$ cabal build```
+
+To run the application, open the file ```dist/build/calc/calc.jsexe/index.html``` relative to the web directory in a briwser.
 
