@@ -1,5 +1,5 @@
 # calc
-Command-line calculator written in Haskell for evaluating simple mathematical expressions and solving linear equations in a single variable. Also compiled into a web-version.
+Command-line calculator written in Haskell for evaluating simple mathematical expressions and solving linear equations in a single variable. Also compiled into a web version (experimental).
 
 ## Dependencies
 * Haskell Stack (https://www.haskellstack.org/)
@@ -18,7 +18,7 @@ To run the command-line calculator:
 
 ```$ stack exec calc```
 
-## Building the web version
+## Building the web version (experimental)
 These commands need to be run from the reflex-frp environment.
 
 For the first build, configure the package to use ghcjs.
@@ -29,5 +29,4 @@ To build the application, run:
 
 ```$ cabal build```
 
-To run the application, open the file ```dist/build/calc/calc.jsexe/index.html``` relative to the web directory in a briwser.
-
+To run the application, open the file ```dist/build/calc/calc.jsexe/index.html``` relative to the web directory in a browser. A possible out-of-date version can be found at <https://gautham-toptal-calc.firebaseapp.com/>
