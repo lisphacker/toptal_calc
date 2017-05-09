@@ -18,6 +18,10 @@ To run the command-line calculator:
 
 ```$ stack exec calc```
 
+To build documentation:
+
+```$ stack haddock```
+
 ## Building the web version (experimental)
 These commands need to be run from the reflex-frp environment.
 
