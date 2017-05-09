@@ -176,7 +176,9 @@ postProcessTokenStream tokens = postProc Nothing tokens
         postProc (Just (TokenFn _))    ((TokenOp Sub):tokens) = TokenNeg : postProc (Just TokenNeg) tokens
         postProc (Just TokenNeg)       ((TokenOp Sub):tokens) = TokenNeg : postProc (Just TokenNeg) tokens
         postProc (Just (TokenValue _)) (TokenBrOpen:tokens)   = TokenOp Mul : TokenBrOpen : postProc (Just TokenBrOpen) tokens
+        postProc (Just TokenBrClose)   (TokenBrOpen:tokens)   = TokenOp Mul : TokenBrOpen : postProc (Just TokenBrOpen) tokens
         postProc (Just (TokenValue _)) (v@(TokenValue _):tokens)   = TokenOp Mul : v : postProc (Just v) tokens
+        postProc (Just TokenBrClose)   (v@(TokenValue _):tokens)   = TokenOp Mul : v : postProc (Just v) tokens
         postProc _                     (token:tokens)         = token : postProc (Just token) tokens
         postProc _                     []                     = []
 

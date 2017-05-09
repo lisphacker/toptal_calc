@@ -22,6 +22,8 @@ linEqnTests = [ ("2 * x + 0.5 = 1",[0.25])
 
 quadEqnTests = [ ("xx-1=0",[-1.0, 1.0])
                , ("2xx - 11x + 15=0",[2.5, 3.0])
+               , ("(x-3)(x-2)=0",[3.0, 2.0])
+               , ("x(x-5)=0",[0.0,5.0])
                ]
 
 unexpCharTests = [ ("a%10=0", ErrUnexpectedCharInInputAt "%10=0")
