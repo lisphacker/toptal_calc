@@ -1,5 +1,5 @@
 # calc
-Command-line calculator written in Haskell for evaluating simple mathematical expressions and solving linear equations in a single variable. Also compiled into a web version (experimental).
+Command-line calculator written in Haskell for evaluating simple mathematical expressions and solving linear/quadratic equations in a single variable. Also compiled into a web version (experimental).
 
 ## Dependencies
 * Haskell Stack (https://www.haskellstack.org/)
